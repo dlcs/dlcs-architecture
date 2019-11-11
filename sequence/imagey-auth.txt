@@ -1,0 +1,51 @@
+title IIIF-DLCS-DDS-CAS Auth flow
+
+note right of browser:
+  browser (i.e., client side script)
+  is a client of DLCS via only the 
+  IIIF Authentication Interaction patterns
+end note
+note over browser:
+  window.open()
+end note
+browser->DLCS: GET dlcs.io/loginService
+DLCS->browser: (redirect)
+note over DLCS:
+  DLCS has redirected to its configured role provider, the DDS.
+  DLCS doesn't know how DDS does auth; it gets pulled back 
+  into this flow a few steps later.
+end note
+browser->DDS: GET wl.org/iiif/dlcslogin
+DDS->browser: (redirect)
+note right of DDS:
+  DDS is a client of SSO via only the 
+  CAS Protocol
+end note
+browser->SSO: GET /cas/login
+browser->+SSO: POST (creds)
+SSO->SSO: establish CAS SSO session
+SSO->-browser: (redirect)
+browser->+DDS: GET /iiif/postdlcslogin?ticket=...
+DDS->SSO: (backchannel ticket validation)
+DDS->DDS: establish DDS session
+DDS->-browser: (redirect)
+
+note right of DLCS:
+  This token/role exchange is what makes 
+  DDS a Role Provider for DLCS
+end note
+browser->+DLCS: GET dlcs.io/fromcas?token=...
+DLCS->DDS: (validate token)
+DLCS->DDS: (backchannel role acquisition)
+DLCS->-DLCS: establish DLCS session
+note over DLCS:
+  window.close()
+end note
+note right of browser:
+  browser now has a cookie it can present on
+  *simple* (in CORS terminology) web requests for
+  IIIF Images, videos etc; DLCS knows what roles
+  that cookie is entitled to, and what roles the
+  requested image or video has.
+end note
+browser->+DLCS: (follow IIIF Auth interaction patterns)
